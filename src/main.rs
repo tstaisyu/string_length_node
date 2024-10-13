@@ -1,6 +1,6 @@
 use std::sync::{Arc, Mutex};
 // rclrs related imports
-use rclrs::{Publisher, RclrsError};
+use rclrs::{Publisher, RclrsError, Subscription};
 use std_msgs::msg::String as StringMsg;
 use std_msgs::msg::UInt8 as UInt8Msg;
 
@@ -9,6 +9,7 @@ struct StringLengthNode {
     _subscription: Arc<rclrs::Subscription<StringMsg>>,
     data: Arc<Mutex<Option<StringMsg>>>,
     publisher: Arc<rclrs::Publisher<UInt8Msg>>,
+    counter: Arc<Mutex<u8>>,
 }
 
 impl StringLengthNode {
@@ -24,21 +25,22 @@ impl StringLengthNode {
             },
         )?;
         let publisher = node.create_publisher("string_length", rclrs::QOS_PROFILE_DEFAULT)?;
+        let counter = Arc::new(Mutex::new(0));
         // Return Ok with the constructed node
         Ok(Self{
             node,
             _subscription,
             publisher,
             data,
+            counter,
         })
     }
     fn publish(&self) -> Result<(), rclrs::RclrsError> {
         // Get the latest data from the subscription
-        if let Some(s) = &*self.data.lock().unwrap() {
-            let mut length_msg = UInt8Msg { data: 0 };
-            length_msg.data = s.data.len() as u8;
-            self.publisher.publish(length_msg)?;
-        }
+        let mut count = self.counter.lock().unwrap();
+        let length_msg = UInt8Msg { data: *count };
+        self.publisher.publish(length_msg)?;
+        *count += 1; // カウンターをインクリメント
         Ok(())
     }
 } // impl StringLengthNode
