@@ -1,19 +1,29 @@
-// subscriber_node.rs
-use rclrs;
-use std_msgs::msg::UInt8;
+// src/subscriber_node.rs
+use rclrs::{Subscription, Node, Context, RclrsError};
+use std_msgs::msg::String as StringMsg;
 
-pub fn listen() -> Result<(), rclrs::RclrsError> {
-    let context = rclrs::Context::new(std::env::args())?;
-    let node = rclrs::Node::new(context, "uint8_subscriber")?;
+pub struct SubscriberNode {
+    pub node: Node,
+    pub subscription: Subscription<StringMsg>,
+}
 
-    let subscription = node.create_subscription::<UInt8>(
-        "string_length",
-        rclrs::QOS_PROFILE_DEFAULT,
-        |msg: UInt8| {
-            println!("Received: {}", msg.data);
-        },
-    )?;
+impl SubscriberNode {
+    pub fn new(context: &Context) -> Result<Self, RclrsError> {
+        let node = Node::new(context, "example_subscriber")?;
+        let subscription = node.create_subscription(
+            "topic",
+            rclrs::QOS_PROFILE_DEFAULT,
+            |msg: StringMsg| {
+                println!("Received: {}", msg.data);
+            },
+        )?;
+        Ok(Self { node, subscription })
+    }
+}
 
-    println!("Rust subscriber node started, listening to 'string_length'");
-    rclrs::spin(node)
+// Provide a public function to run the subscription logic
+pub fn run_subscriber() -> Result<(), RclrsError> {
+    let context = Context::new(std::env::args())?;
+    let subscriber_node = SubscriberNode::new(&context)?;
+    rclrs::spin(subscriber_node.node)
 }
